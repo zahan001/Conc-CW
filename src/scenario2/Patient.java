@@ -4,7 +4,8 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 /**
- * Represents a patient in the system
+ * Represents a patient in the hospital system
+ * Data object passed between producer and consumer threads
  */
 public class Patient {
 
@@ -37,7 +38,7 @@ public class Patient {
 
     @Override
     public String toString() {
-        return String.format("Patient #%d (%s) - Arrived: %s",
+        return String.format("Patient #%d (%s) arrived at %s",
                 patientId,
                 requiredSpecialty.getDisplayName(),
                 getFormattedArrivalTime());

@@ -102,7 +102,7 @@ public class HospitalSystem {
             Specialty specialty = specialties[i % specialties.length];
             String consultantName = "Dr. " + getConsultantName(shiftNumber, i + 1);
 
-            Consultant consultant = new Consultant(consultantName, specialty, patientQueue);
+            Consultant consultant = new Consultant(consultantName, specialty, (PatientQueue) patientQueue);
             Thread consultantThread = new Thread(consultant);
 
             currentConsultants.add(consultant);

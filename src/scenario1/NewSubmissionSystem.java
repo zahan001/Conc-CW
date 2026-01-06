@@ -1,64 +1,61 @@
 package scenario1;
 
 import java.util.concurrent.*;
-import java.util.Random;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
- * Main submission system that processes student submissions concurrently
- * Uses thread pool to handle thousands of simultaneous submissions
+ * New concurrent submission system that replaces the old sequential system
+ * Handles thousands of concurrent student submissions efficiently
  */
 public class NewSubmissionSystem {
 
     private final SubmissionStats stats;
     private final ExecutorService executorService;
-    private final Random random;
-
-    // Configuration
-    private static final int THREAD_POOL_SIZE = Runtime.getRuntime().availableProcessors() * 2;
-    private static final int MIN_PROCESSING_TIME_MS = 50;
-    private static final int MAX_PROCESSING_TIME_MS = 200;
-    private static final double FAILURE_RATE = 0.05; // 5% failure rate
+    private final int poolSize;
 
     /**
-     * Constructor initializes the system
+     * Constructor - initializes thread pool
      */
-    public NewSubmissionSystem() {
+    public NewSubmissionSystem(int numberOfStudents, int poolSize) {
         this.stats = new SubmissionStats();
-        // Fixed thread pool: reuses threads, efficient for many tasks
-        this.executorService = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
-        this.random = new Random();
+        this.poolSize = poolSize;
+        this.executorService = Executors.newFixedThreadPool(poolSize);
 
-        System.out.println("Submission System Initialized");
-        System.out.println("Thread Pool Size: " + THREAD_POOL_SIZE);
-        System.out.println("-".repeat(60));
+        System.out.println("\n╔════════════════════════════════════════════════════════╗");
+        System.out.println("║   NEW CONCURRENT SUBMISSION SYSTEM INITIALIZED         ║");
+        System.out.println("╚════════════════════════════════════════════════════════╝");
+        System.out.println("Thread Pool Size: " + poolSize);
+        System.out.println("Target Capacity: " + numberOfStudents + " students");
+        System.out.println("-".repeat(60) + "\n");
     }
 
     /**
-     * Process submissions for given number of students
-     * Uses CountDownLatch to wait for all threads to complete
+     * Process all student submissions concurrently
      */
     public void processSubmissions(int numberOfStudents) {
-        System.out.println("\nProcessing " + numberOfStudents + " student submissions...\n");
+        System.out.println("Processing " + numberOfStudents + " student submissions...\n");
 
         long startTime = System.currentTimeMillis();
 
-        // CountDownLatch: counts down from numberOfStudents to 0
-        // Main thread waits until count reaches 0
+        // Create all students
+        List<Student> students = new ArrayList<>();
+        for (int i = 1; i <= numberOfStudents; i++) {
+            students.add(new Student(i));
+        }
+
+        // CountDownLatch to wait for all submissions
         CountDownLatch latch = new CountDownLatch(numberOfStudents);
 
-        // Submit all tasks to thread pool
-        for (int i = 1; i <= numberOfStudents; i++) {
-            final int studentId = i;
-
-            // Submit task to executor
+        // Submit all student tasks to thread pool
+        for (Student student : students) {
             executorService.submit(() -> {
                 try {
-                    processIndividualSubmission(studentId);
+                    processStudentSubmission(student);
                 } catch (Exception e) {
-                    System.err.println("Error processing student " + studentId + ": " + e.getMessage());
-                    stats.incrementFailure();
+                    System.err.println("Error processing " + student.getName() + ": " + e.getMessage());
+                    stats.recordFailure();
                 } finally {
-                    // Always count down, even if exception occurs
                     latch.countDown();
                 }
             });
@@ -66,14 +63,16 @@ public class NewSubmissionSystem {
 
         // Wait for all submissions to complete
         try {
-            System.out.println("Waiting for all submissions to complete...\n");
-            latch.await(); // Blocks until latch count reaches 0
+            System.out.println("⏳ Waiting for all submissions to complete...\n");
+            latch.await(); // Block until all threads finish
 
             long endTime = System.currentTimeMillis();
             long totalTime = endTime - startTime;
-            stats.setTotalProcessingTime(totalTime);
 
-            System.out.println("\nAll submissions processed!");
+            System.out.println("\n✓ All submissions processed!");
+
+            // Display results using UML method signature
+            stats.printResults("Concurrent Submission", totalTime);
 
         } catch (InterruptedException e) {
             System.err.println("Submission processing interrupted: " + e.getMessage());
@@ -82,45 +81,34 @@ public class NewSubmissionSystem {
     }
 
     /**
-     * Simulates processing a single student's submission
-     * This method runs in a worker thread
+     * Process individual student's submission
      */
-    private void processIndividualSubmission(int studentId) {
-        try {
-            // Simulate variable processing time
-            int processingTime = MIN_PROCESSING_TIME_MS +
-                    random.nextInt(MAX_PROCESSING_TIME_MS - MIN_PROCESSING_TIME_MS);
-            Thread.sleep(processingTime);
+    private void processStudentSubmission(Student student) {
+        // Call student's submitExam() method
+        String result = student.submitExam();
 
-            // Simulate random failures (network issues, file corruption, etc.)
-            boolean success = random.nextDouble() > FAILURE_RATE;
+        // Record result based on return value
+        switch (result) {
+            case "SUCCESS":
+                stats.recordSuccess();
+                // Uncomment for verbose output:
+                // System.out.println("✓ " + student.getName() + " - Submission successful");
+                break;
 
-            if (success) {
-                stats.incrementSuccess();
-                // Uncomment to see individual success messages (verbose for large numbers)
-                // System.out.println("✓ Student " + studentId + " submission successful");
-            } else {
-                stats.incrementFailure();
-                System.out.println("✗ Student " + studentId + " submission failed (timeout/error)");
-            }
+            case "FAILED":
+                stats.recordFailure();
+                System.out.println("✗ " + student.getName() + " - Submission failed (timeout/error)");
+                break;
 
-        } catch (InterruptedException e) {
-            System.err.println("Submission interrupted for student " + studentId);
-            stats.incrementFailure();
-            Thread.currentThread().interrupt();
+            case "ERROR":
+                stats.recordFailure();
+                System.out.println("✗ " + student.getName() + " - Submission error (interrupted)");
+                break;
         }
     }
 
     /**
-     * Display final statistics
-     */
-    public void displayResults() {
-        stats.displayStats();
-    }
-
-    /**
-     * Shutdown the executor service properly
-     * Important: Always call this to release resources
+     * Shutdown the executor service
      */
     public void shutdown() {
         executorService.shutdown();
@@ -132,5 +120,6 @@ public class NewSubmissionSystem {
             executorService.shutdownNow();
             Thread.currentThread().interrupt();
         }
+        System.out.println("System shutdown complete.\n");
     }
 }

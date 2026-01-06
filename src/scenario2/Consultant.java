@@ -1,23 +1,26 @@
 package scenario2;
 
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.TimeUnit;
-
 /**
- * Consultant thread that treats patients
- * Each consultant runs continuously, taking patients from queue
+ * Consumer thread representing a consultant treating patients
+ * Each consultant takes patients from ONE specialty queue only
  */
 public class Consultant implements Runnable {
 
     private final String consultantName;
     private final Specialty specialty;
-    private final BlockingQueue<Patient> patientQueue;
-    private volatile boolean working; // volatile: visible across threads
+    private final PatientQueue patientQueue;
+    private volatile boolean working;
     private int patientsSeenCount;
 
-    private static final int CONSULTATION_TIME_MS = 100; // Simulated consultation time
+    private static final int CONSULTATION_TIME_MS = 100; // Simulated treatment time
 
-    public Consultant(String name, Specialty specialty, BlockingQueue<Patient> queue) {
+    /**
+     * Constructor
+     * @param name Consultant name
+     * @param specialty Consultant's specialty
+     * @param queue The queue for this specialty ONLY
+     */
+    public Consultant(String name, Specialty specialty, PatientQueue queue) {
         this.consultantName = name;
         this.specialty = specialty;
         this.patientQueue = queue;
@@ -32,28 +35,21 @@ public class Consultant implements Runnable {
 
         try {
             while (working) {
-                // Try to get a patient (wait up to 2 seconds)
-                Patient patient = patientQueue.poll(2, TimeUnit.SECONDS);
+                // Take patient from queue (blocks if empty)
+                Patient patient = patientQueue.takePatient();
 
-                if (patient != null) {
-                    // Check if patient matches our specialty
-                    if (patient.getRequiredSpecialty() == specialty) {
-                        treatPatient(patient);
-                    } else {
-                        // Wrong specialty - put back in queue
-                        patientQueue.put(patient);
-                    }
-                }
-
-                // Check if shift should end
-                if (!working) {
-                    break;
+                // Verify specialty matches (should always match with separate queues)
+                if (patient.getRequiredSpecialty() == specialty) {
+                    treatPatient(patient);
+                } else {
+                    // This should NEVER happen with separate queues
+                    System.err.println("ERROR: " + consultantName +
+                            " received wrong specialty patient!");
                 }
             }
-
         } catch (InterruptedException e) {
-            System.out.println("<<< " + consultantName + " interrupted");
-            Thread.currentThread().interrupt();
+            // Shift ended - interrupt received
+            System.out.println("<<< " + consultantName + " ending shift...");
         }
 
         System.out.println("<<< " + consultantName + " ended shift. Patients seen: " +
@@ -64,9 +60,7 @@ public class Consultant implements Runnable {
      * Treat a patient (simulate consultation)
      */
     private void treatPatient(Patient patient) throws InterruptedException {
-        System.out.printf("    [%s] treating %s%n",
-                consultantName,
-                patient);
+        System.out.printf("    [%s] treating %s%n", consultantName, patient);
 
         // Simulate consultation time
         Thread.sleep(CONSULTATION_TIME_MS);
@@ -79,7 +73,7 @@ public class Consultant implements Runnable {
     }
 
     /**
-     * Stop the consultant (end shift)
+     * Stop working (called by ShiftManager)
      */
     public void stopWorking() {
         working = false;
