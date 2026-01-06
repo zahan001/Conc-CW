@@ -4,55 +4,53 @@ import java.util.Random;
 
 /**
  * Represents a student submitting an exam
+ * Matches UML specification from coursework
  */
 public class Student {
-
     private int studentId;
     private String name;
     private Random random;
 
     /**
-     * Constructor as per UML diagram
+     * Constructor matching UML specification
      */
-    public Student(int studentId) {
+    public Student(int studentId, String name) {
         this.studentId = studentId;
-        this.name = "Student_" + studentId;
+        this.name = name;
         this.random = new Random();
     }
 
     /**
-     * Simulate exam submission
-     * Returns String message indicating success or failure
+     * Get student name
      */
-    public String submitExam() {
-        try {
-            // Simulate processing time (50-200ms)
-            int processingTime = 50 + random.nextInt(150);
-            Thread.sleep(processingTime);
-
-            // 5% failure rate
-            boolean success = random.nextDouble() > 0.05;
-
-            if (success) {
-                return "SUCCESS";
-            } else {
-                return "FAILED";
-            }
-
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return "ERROR";
-        }
+    public String getName() {
+        return this.name;
     }
 
     /**
-     * Get student name as per UML
+     * Get student ID
      */
-    public String getName() {
-        return name;
-    }
-
     public int getStudentId() {
         return studentId;
+    }
+
+    /**
+     * Submit exam - simulates submission process
+     * Returns boolean indicating success/failure
+     *
+     * CONCURRENCY: Each Student object accessed by single thread only
+     * Random instance per student eliminates contention
+     *
+     * @return true if submission successful, false if failed
+     * @throws InterruptedException if interrupted during submission
+     */
+    public boolean submitExam() throws InterruptedException {
+        // Simulate variable processing time (0-100ms)
+        int simulateTime = random.nextInt(100);
+        Thread.sleep(simulateTime);
+
+        // 5% failure rate
+        int randomNumber = random.nextInt(100);
+        return randomNumber >= 5;  // Returns false if < 5 (5% chance)
     }
 }

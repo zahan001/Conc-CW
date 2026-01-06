@@ -3,7 +3,8 @@ package scenario1;
 import java.util.Scanner;
 
 /**
- * ExamSubmissionSimulator
+ * Main entry point for submission system
+ * Provides menu for testing different load levels
  */
 public class Main {
 
@@ -11,14 +12,11 @@ public class Main {
         Scanner scanner = new Scanner(System.in);
 
         System.out.println("\n╔════════════════════════════════════════════════════════╗");
-        System.out.println("║   EASTMINSTER UNIVERSITY - EXAM SUBMISSION SYSTEM      ║");
-        System.out.println("║   Concurrent Multi-Threaded Solution                   ║");
+        System.out.println("║   EASTMINSTER UNIVERSITY SUBMISSION SYSTEM             ║");
+        System.out.println("║   Concurrent Exam Submission Handler                   ║");
         System.out.println("╚════════════════════════════════════════════════════════╝\n");
 
-        System.out.println("This new system replaces the old sequential submission system");
-        System.out.println("that caused 20-30 minute wait times and timeouts.\n");
-
-        // Test scenarios
+        // Test scenarios menu
         System.out.println("Select test scenario:");
         System.out.println("1. Small load (1,000 students)");
         System.out.println("2. Medium load (5,000 students) - Original capacity");
@@ -51,28 +49,40 @@ public class Main {
         // Calculate optimal thread pool size
         int poolSize = Runtime.getRuntime().availableProcessors() * 2;
 
-        // Create and run the new system
-        NewSubmissionSystem system = new NewSubmissionSystem(numberOfStudents, poolSize);
+        // Create and run system
+        NewSubmissionSystem system = new NewSubmissionSystem(poolSize, numberOfStudents);
 
         try {
-            system.processSubmissions(numberOfStudents);
+            system.processSubmissions();
+            system.displayResults();
+        } catch (Exception e) {
+            System.err.println("System error: " + e.getMessage());
+            e.printStackTrace();
         } finally {
-            system.shutdown();
+            try {
+                system.shutdown();
+            } catch (InterruptedException e) {
+                System.err.println("Shutdown interrupted");
+                Thread.currentThread().interrupt();
+            }
         }
 
         scanner.close();
 
-        /*System.out.println("╔════════════════════════════════════════════════════════╗");
+        /*
+        // Display comparison
+        System.out.println("╔════════════════════════════════════════════════════════╗");
         System.out.println("║   COMPARISON: Old vs New System                        ║");
         System.out.println("╚════════════════════════════════════════════════════════╝");
         System.out.println("Old System (Sequential):");
         System.out.println("  - 5,000 students = 20-30 minutes");
-        System.out.println("  - Single threaded, processed one at a time");
-        System.out.println("  - Frequent timeouts and failures");
-        System.out.println("\nNew System (Concurrent):");
-        System.out.println("  - 5,000 students = ~20 seconds");
-        System.out.println("  - " + poolSize + " threads working simultaneously");
-        System.out.println("  - Scales to 100,000+ students");
-        System.out.println("  - Graceful error handling\n");*/
+        System.out.println("  - Single threaded");
+        System.out.println("  - Frequent timeouts\n");
+        System.out.println("New System (Concurrent):");
+        System.out.printf("  - %,d students processed%n", numberOfStudents);
+        System.out.printf("  - %d threads working simultaneously%n", poolSize);
+        System.out.println("  - Scalable to 100,000+ students");
+        System.out.println("  - 60-90× faster!\n");
+        */
     }
 }
